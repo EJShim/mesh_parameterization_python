@@ -102,7 +102,9 @@ if __name__ == "__main__":
     reader.SetFileName(sys.argv[1])
     reader.Update()
     polydata = reader.GetOutput()
-    polydata.GetPointData().RemoveArray("Normals")
+    actor = MakeActor(polydata)
+    ren.AddActor(actor)
+    # polydata.GetPointData().RemoveArray("Normals")
 
 
     # Get V and F from polydatqa
@@ -112,14 +114,18 @@ if __name__ == "__main__":
     F = F[:, 1:]
 
     U_tutte = tutte(V, F)
+    V_tutte = np.concatenate((U_tutte,  np.zeros( (len(U_tutte),1) ) ), axis=1) #Make three-dimensional
 
-    V_tutte = np.concatenate((U_tutte,  np.zeros( (len(U_tutte),1) ) ), axis=1)
+
     tutte_points = numpy_support.numpy_to_vtk( V_tutte )
-    polydata.GetPoints().SetData(tutte_points)
+    tuttePoly = vtk.vtkPolyData()
+    tuttePoly.DeepCopy(polydata)
+    tuttePoly.GetPoints().SetData(tutte_points)
+    tutteActor = MakeActor(tuttePoly)
+    tutteActor.SetScale( 100, 100, 100 )
 
-    actor = MakeActor(polydata)
+    ren.AddActor(tutteActor)
 
-    ren.AddActor(actor)
     renWin.Render()
     iren.Start()
 
