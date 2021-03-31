@@ -1,18 +1,34 @@
 
 import sys
+import os
 import vtk
 import igl
 from vtk.util import numpy_support
 import numpy as np
 import math
+import random
 from scipy.sparse import csr_matrix, coo_matrix
+
+
+vtk_out = vtk.vtkOutputWindow()
+vtk_out.SetInstance(vtk_out)
+
+
+#Make Shader
+
+
+rootPath =  os.path.dirname( os.path.abspath( __file__ )) 
+with open( os.path.join( rootPath, "shaders", "normalmap.glsl"), 'r') as shaderFile:
+    FragmentShaderText = shaderFile.read()
+
+with open( os.path.join( rootPath, "shaders", "vertexShader.glsl"), 'r') as shaderFile:
+    VertexShaderText = shaderFile.read()
 
 
 def tutte(V, F):
 
     #Get Boundary and Edge
     L = igl.boundary_loop(F)
-    E = igl.edges(F)
     sizeL = len(L)
 
 
@@ -24,6 +40,8 @@ def tutte(V, F):
 
 
     #Iterate over edge, build some kind of sparse matrix,, 
+    E = igl.edges(F)
+    
     I = []
     J = []
     Val = []
@@ -67,12 +85,16 @@ def tutte(V, F):
     # print(A.shape)
     U = igl.min_quad_with_fixed(A, B_flat, b, bc, Aeq, Beq, False)
 
-    return U[1]
+    return U[1], bc
 
 
 def MakeActor(polydata):
-    mapper = vtk.vtkPolyDataMapper()
+    mapper = vtk.vtkOpenGLPolyDataMapper()
     mapper.SetInputData(polydata)
+
+    # mapper.SetVertexShaderCode(VertexShaderText)
+    # mapper.SetFragmentShaderCode(FragmentShaderText)
+    polydata.GetPointData().RemoveArray("Normals")
 
 
     actor = vtk.vtkActor()
@@ -80,6 +102,25 @@ def MakeActor(polydata):
 
     return actor
 
+
+def MakeBoundaryActor(boundary):
+    print(boundary.shape)
+    boundary3D = np.concatenate( [boundary, np.zeros((len(boundary),1) )], axis=1)
+    print(boundary3D)
+
+    polydata = vtk.vtkPolyData()
+    points = vtk.vtkPoints()
+    points.SetData( numpy_support.numpy_to_vtk(boundary3D) )
+    polydata.SetPoints(points)
+    
+    mapper = vtk.vtkOpenGLSphereMapper()
+    mapper.SetRadius(.005)
+    mapper.SetInputData(polydata)
+
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+
+    return actor
 
 
 if __name__ == "__main__":
@@ -103,9 +144,9 @@ if __name__ == "__main__":
     reader.Update()
     polydata = reader.GetOutput()
     actor = MakeActor(polydata)
+    actor.SetScale(.01, .01, .01)
     ren.AddActor(actor)
-    # polydata.GetPointData().RemoveArray("Normals")
-
+    
 
     # Get V and F from polydatqa
     V = numpy_support.vtk_to_numpy( polydata.GetPoints().GetData())
@@ -113,16 +154,18 @@ if __name__ == "__main__":
     F = F.reshape( int(len(F)/4), 4  )
     F = F[:, 1:]
 
-    U_tutte = tutte(V, F)
+    U_tutte, boundary = tutte(V, F)
     V_tutte = np.concatenate((U_tutte,  np.zeros( (len(U_tutte),1) ) ), axis=1) #Make three-dimensional
 
+    boundaryActor = MakeBoundaryActor(boundary)
+    ren.AddActor(boundaryActor)
 
     tutte_points = numpy_support.numpy_to_vtk( V_tutte )
     tuttePoly = vtk.vtkPolyData()
     tuttePoly.DeepCopy(polydata)
     tuttePoly.GetPoints().SetData(tutte_points)
     tutteActor = MakeActor(tuttePoly)
-    tutteActor.SetScale( 100, 100, 100 )
+    # tutteActor.SetScale( 100, 100, 100 )
 
     ren.AddActor(tutteActor)
 

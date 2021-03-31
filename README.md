@@ -1,8 +1,8 @@
-#Mesh Parameterization Python
+# Mesh Parameterization Python
 python code of mesh parameterizaiton tutte, lscm
 
 
-#Prerequisites
+# Prerequisites
 - vtk
 - libigl 
 
