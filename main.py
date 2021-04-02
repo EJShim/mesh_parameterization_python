@@ -38,6 +38,8 @@ def tutte(V, F):
         bc.append( [math.cos(math.pi*2/sizeL*i), math.sin( math.pi*2/sizeL*i )] )
     bc = np.array(bc, dtype=np.double)
 
+    print("L: : ", L.shape)
+
 
     #Iterate over edge, build some kind of sparse matrix,, 
     E = igl.edges(F)
@@ -48,7 +50,7 @@ def tutte(V, F):
 
     diag = np.zeros( len(V) )
     for i, e in enumerate(E):
-        tp = 1.0 / np.linalg.norm( (V[e[0]] - V[e[1]]) )
+        tp = 1.0 / 3*  np.linalg.norm( (V[e[0]] - V[e[1]]) )
 
         I.append(e[0])
         J.append(e[1])
@@ -112,10 +114,12 @@ def MakeBoundaryActor(boundary):
     points = vtk.vtkPoints()
     points.SetData( numpy_support.numpy_to_vtk(boundary3D) )
     polydata.SetPoints(points)
+    polydata.GetPointData().SetScalars(numpy_support.numpy_to_vtk(np.arange(len(boundary))))
     
     mapper = vtk.vtkOpenGLSphereMapper()
     mapper.SetRadius(.005)
     mapper.SetInputData(polydata)
+    mapper.SetScalarRange(0, len(boundary))
 
     actor = vtk.vtkActor()
     actor.SetMapper(mapper)
