@@ -11,3 +11,9 @@ pip install vtk
 conda install -c conda-forge igl
 
 ```
+
+# Run
+
+```
+python main.py {path_to_target file}
+```

@@ -14,17 +14,6 @@ vtk_out = vtk.vtkOutputWindow()
 vtk_out.SetInstance(vtk_out)
 
 
-#Make Shader
-
-
-rootPath =  os.path.dirname( os.path.abspath( __file__ )) 
-with open( os.path.join( rootPath, "shaders", "normalmap.glsl"), 'r') as shaderFile:
-    FragmentShaderText = shaderFile.read()
-
-with open( os.path.join( rootPath, "shaders", "vertexShader.glsl"), 'r') as shaderFile:
-    VertexShaderText = shaderFile.read()
-
-
 def tutte(V, F):
 
     #Get Boundary and Edge
@@ -93,11 +82,8 @@ def tutte(V, F):
 def MakeActor(polydata):
     mapper = vtk.vtkOpenGLPolyDataMapper()
     mapper.SetInputData(polydata)
-
-    # mapper.SetVertexShaderCode(VertexShaderText)
-    # mapper.SetFragmentShaderCode(FragmentShaderText)
+    
     polydata.GetPointData().RemoveArray("Normals")
-
 
     actor = vtk.vtkActor()
     actor.SetMapper(mapper)
@@ -131,24 +117,43 @@ if __name__ == "__main__":
     iren = vtk.vtkRenderWindowInteractor()
     iren.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
     renWin = vtk.vtkRenderWindow()
-    renWin.SetSize(512, 512)
+    renWin.SetSize(1000, 1000)
     iren.SetRenderWindow(renWin)
     ren = vtk.vtkRenderer()
+    ren.SetBackground(1, 1, 1)
     renWin.AddRenderer(ren)
 
     print("Helllo vtk and igl")
 
     if len(sys.argv) < 2:
-        sys.argv.append("//192.168.0.113/Imagoworks/Data/confident/Mesh/IntraoralScan/DAEYOU-cut/train/2930/136.vtp")
+        sys.argv.append("sample/sample.stl")
 
 
     #Read VTK file
-    reader = vtk.vtkXMLPolyDataReader()
+    file_path = sys.argv[1]
+    ext = file_path.split(".")[-1]
+
+    if ext == "stl":
+        reader = vtk.vtkSTLReader()
+    elif ext == "obj":
+        reader = vtk.vtkOBJReader()
+    elif ext == "ply":
+        reader = vtk.vtkPLYReader()
+    else:
+        raise(ext, "ext not supported")
     reader.SetFileName(sys.argv[1])
     reader.Update()
     polydata = reader.GetOutput()
+
+    #Calculate curvature
+    cc = vtk.vtkCurvatures()
+    cc.SetInputData(polydata)
+    cc.Update()
+    polydata = cc.GetOutput()
+
     actor = MakeActor(polydata)
-    actor.SetScale(.01, .01, .01)
+    actor.GetMapper().SetScalarRange(-1, 1)
+    actor.SetScale(.02, .02, .02)
     ren.AddActor(actor)
     
 
@@ -169,6 +174,7 @@ if __name__ == "__main__":
     tuttePoly.DeepCopy(polydata)
     tuttePoly.GetPoints().SetData(tutte_points)
     tutteActor = MakeActor(tuttePoly)
+    tutteActor.GetMapper().SetScalarRange(-0.5, 0.5)
     # tutteActor.SetScale( 100, 100, 100 )
 
     ren.AddActor(tutteActor)
